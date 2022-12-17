@@ -28,17 +28,17 @@ resource "fly_app" "app" {
   name = var.app_name
 }
 
-resource "fly_ip" "app" {
+resource "fly_ip" "ip" {
   app  = fly_app.app.name
   type = "v4"
 }
 
-resource "fly_cert" "app" {
+resource "fly_cert" "cert" {
   app      = fly_app.app.name
   hostname = var.domain_name
 }
 
-resource "fly_volume" "app" {
+resource "fly_volume" "data" {
   name   = "data"
   app    = fly_app.app.name
   size   = 1
@@ -67,10 +67,10 @@ resource "fly_machine" "app" {
   ]
   mounts = [
     {
-      volume : "${fly_volume.app.name}"
+      volume : "${fly_volume.data.name}"
       path : "/app/data"
       encrypted : true
-      size_gb : fly_volume.app.size
+      size_gb : fly_volume.data.size
     }
   ]
   env = {}
@@ -84,8 +84,8 @@ data "cloudflare_zones" "domain" {
 
 resource "cloudflare_record" "verification_dns" {
   zone_id = lookup(data.cloudflare_zones.domain.zones[0], "id")
-  name    = fly_cert.app.dnsvalidationhostname
-  value   = fly_cert.app.dnsvalidationtarget
+  name    = fly_cert.cert.dnsvalidationhostname
+  value   = fly_cert.cert.dnsvalidationtarget
   type    = "CNAME"
   proxied = false
 }
@@ -93,7 +93,7 @@ resource "cloudflare_record" "verification_dns" {
 resource "cloudflare_record" "domain" {
   zone_id = lookup(data.cloudflare_zones.domain.zones[0], "id")
   name    = var.domain_name
-  value   = fly_ip.app.address
+  value   = fly_ip.ip.address
   type    = "A"
   proxied = true
 }
