@@ -47,21 +47,18 @@ resource "fly_volume" "app" {
 
 resource "fly_machine" "app" {
   app      = fly_app.app.name
-  region   = "fra" # Frankfurt
+  region   = var.region
   name     = var.app_name
+  cputype  = "shared"
   cpus     = 1
   memorymb = 256
-  image    = "louislam/uptime-kuma:latest"
+  image    = "registry-1.docker.io/louislam/uptime-kuma:latest"
   services = [
     {
       ports = [
         {
           port     = 443
           handlers = ["tls", "http"]
-        },
-        {
-          port     = 80
-          handlers = ["http"]
         }
       ]
       protocol : "tcp",
@@ -72,8 +69,11 @@ resource "fly_machine" "app" {
     {
       volume : "${fly_volume.app.name}"
       path : "/app/data"
+      encrypted : true
+      size_gb : fly_volume.app.size
     }
   ]
+  env = {}
 }
 
 data "cloudflare_zones" "domain" {
