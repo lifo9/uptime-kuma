@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": false,
+  "prHourlyLimit": 0,
+  "enabledManagers": [
+    "github-actions"
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "^fly\\.toml$"
+      ],
+      "matchStrings": [
+        "image\\s*=\\s*\"([\\w.-]+(?:/[^/\"]+)+)\""
+      ],
+      "depNameTemplate": "{{depName}}",
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

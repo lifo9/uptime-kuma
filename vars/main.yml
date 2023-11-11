@@ -1,0 +1,4 @@
+fly_organization: "{{ lookup('env', 'FLY_ORGANIZATION') }}"
+fly_app_name: "{{ lookup('env', 'FLY_APP_NAME') }}"
+fly_region: "{{ lookup('env', 'FLY_REGION') }}"
+domain_name: "{{ lookup('env', 'TF_VAR_domain_name') }}"

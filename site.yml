@@ -1,0 +1,105 @@
+- name: Uptime Kuma
+  hosts: localhost
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: Check if the Fly app exists
+      ansible.builtin.command: fly apps ls
+      register: fly_apps_list
+      changed_when: false
+
+    - name: Register app existence
+      ansible.builtin.set_fact:
+        app_exists: "{{ fly_app_name in fly_apps_list.stdout }}"
+
+    - name: Create Fly app if it does not exist
+      ansible.builtin.command: fly apps create {{ fly_app_name }} --org {{ fly_organization }}
+      when: not app_exists
+      register: app_creation_result
+      changed_when: "fly_app_name in app_creation_result.stdout"
+
+    - name: List existing app volumes
+      ansible.builtin.command: fly volumes ls -a {{ fly_app_name }}
+      register: existing_volumes
+      changed_when: false
+
+    - name: Check if the data volume already exists
+      ansible.builtin.set_fact:
+        volume_exists: "{{ 'data' in existing_volumes.stdout }}"
+
+    - name: Create data volume if it does not exist
+      ansible.builtin.command: fly volumes create data -a {{ fly_app_name }} -n 1 -s 1 -r {{ fly_region }} -y
+      when: not volume_exists
+      register: volume_creation
+      changed_when: "'created volume' in volume_creation.stdout"
+
+    - name: List IPv6 addresses for the Fly app
+      ansible.builtin.command: fly ips ls -a {{ fly_app_name }}
+      register: ipv6_addresses
+      changed_when: false
+
+    - name: Check if an IPv6 address is already allocated
+      ansible.builtin.set_fact:
+        ipv6_allocated: "{{ ipv6_addresses.stdout | regex_search('([\\da-fA-F]{1,4}:){1,7}:?([\\da-fA-F]{1,4}:){0,6}[\\da-fA-F]{1,4}', ignorecase=True) }}"
+
+    - name: Allocate an IPv6 address if one doesn't exist
+      ansible.builtin.command: fly ips allocate-v6 -a {{ fly_app_name }}
+      when: not ipv6_allocated
+      register: ipv6_allocation_result
+      changed_when: "'IP address is allocated' in ipv6_allocation_result.stdout"
+
+    - name: List certs for the Fly app
+      ansible.builtin.command: fly certs list -a {{ fly_app_name }}
+      register: certs_list
+      changed_when: false
+
+    - name: Check if the app domain cert already exists
+      ansible.builtin.set_fact:
+        cert_exists: "{{ domain_name in certs_list.stdout }}"
+
+    - name: Create the app cert if it does not exist
+      ansible.builtin.command: fly certs create {{ domain_name }} -a {{ fly_app_name }}
+      when: not cert_exists
+      changed_when: true
+
+    - name: Show certificate information for the domain
+      ansible.builtin.command: fly certs show {{ domain_name }} -a {{ fly_app_name }} -j
+      register: certs_info
+      changed_when: false
+
+    - name: Extract DNSValidationHostname from certificate info
+      ansible.builtin.set_fact:
+        dns_validation_hostname: "{{ certs_info.stdout | regex_search('\"DNSValidationHostname\":\\s*\"([^\"]+)\"', '\\1') | first }}"
+
+    - name: Extract DNSValidationTarget from certificate info
+      ansible.builtin.set_fact:
+        dns_validation_target: "{{ certs_info.stdout | regex_search('\"DNSValidationTarget\":\\s*\"([^\"]+)\"', '\\1') | first }}"
+
+    - name: Setup DNS via Terraform
+      community.general.terraform:
+        project_path: "terraform/"
+        force_init: true
+        state: present
+        variables:
+          cname: "{{ fly_app_name }}.fly.dev"
+          dns_validation_hostname: "{{ dns_validation_hostname }}"
+          dns_validation_target: "{{ dns_validation_target }}"
+
+    - name: Apply the fly.toml template
+      ansible.builtin.template:
+        src: templates/fly.toml
+        dest: fly.toml
+        mode: "0644"
+      notify: Deploy the app
+
+  handlers:
+    - name: Deploy the app
+      ansible.builtin.command: fly deploy --vm-size=shared-cpu-1x
+      notify: Delete fly.toml file
+      changed_when: true
+
+    - name: Delete fly.toml file
+      ansible.builtin.file:
+        path: fly.toml
+        state: absent
+      changed_when: true
