@@ -6,17 +6,18 @@
   "dependencyDashboard": false,
   "prHourlyLimit": 0,
   "enabledManagers": [
-    "github-actions"
+    "github-actions",
+    "custom.regex"
   ],
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "fileMatch": [
-        "^fly\\.toml$"
+        "^templates/.*\\.toml$"
       ],
       "matchStrings": [
-        "image\\s*=\\s*\"([\\w.-]+(?:/[^/\"]+)+)\""
+        "image\\s*=\\s*\"(?<depName>[\\w./-]+/[\\w.-]+):(?<currentValue>[\\w.-]+)\""
       ],
-      "depNameTemplate": "{{depName}}",
       "datasourceTemplate": "docker"
     }
   ]

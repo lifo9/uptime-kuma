@@ -1,4 +1,3 @@
-
 app = "{{ fly_app_name }}"
 primary_region = "{{ fly_region }}"
 kill_signal = "SIGINT"
