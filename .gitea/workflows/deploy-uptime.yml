@@ -19,7 +19,6 @@ jobs:
           BW_CLIENTSECRET: "${{ secrets.BW_CLIENTSECRET }}"
           BW_SERVER: "${{ secrets.BW_SERVER }}"
           BW_PASSWORD: "${{ secrets.BW_PASSWORD }}"
-          SSH_PRIVATE_KEY_BASE_64: "${{ secrets.SSH_PRIVATE_KEY_BASE_64 }}"
           LOCAL_REGISTRY: "${{ secrets.LOCAL_REGISTRY }}"
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
